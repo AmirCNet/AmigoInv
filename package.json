@@ -1,0 +1,13 @@
+{
+  "name": "amigo-invisible",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Amigo Invisible simple con link único, PIN de 4 dígitos y panel de organizador a prueba de spoilers.",
+  "scripts": {
+    "start": "node server-local.js",
+    "test": "node --test test/draw.test.js test/api.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

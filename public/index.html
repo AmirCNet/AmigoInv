@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A1B36" />
+  <title>Amigo Invisible · Ciclo de Conciertos UAP</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎶</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- Escenario de fondo: foto + reflectores + notas musicales -->
+  <div class="stage" aria-hidden="true">
+    <div class="stage-photo"></div>
+    <div class="stage-glow"></div>
+    <div class="spotlight s1"></div>
+    <div class="spotlight s2"></div>
+    <div class="spotlight s3"></div>
+    <div id="notesLayer" class="notes-layer"></div>
+  </div>
+
+  <canvas id="confettiCanvas" class="confetti-canvas" aria-hidden="true"></canvas>
+
+  <!-- Barra superior visible SOLO cuando el organizador inició sesión -->
+  <div id="adminBarTop" class="admin-topbar" hidden>
+    <div class="admin-topbar-inner">
+      <span class="admin-badge">🛠️ Modo Organizador</span>
+      <div class="admin-topbar-actions">
+        <button id="toggleBgBtn" type="button" class="btn ghost tiny" title="Probar con foto o sin foto (Plan B)">🖼️ Fondo: Foto</button>
+        <button id="switchViewBtn" type="button" class="btn ghost tiny">👥 Ver lista pública</button>
+        <button id="adminLogoutTop" type="button" class="btn ghost tiny">Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Encabezado estilo Ciclo de Conciertos UAP -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="stave-logo" aria-label="Ciclo de Conciertos">
+        <span class="stave-lines" aria-hidden="true"></span>
+        <span class="stave-script">ciclo de Conciertos</span>
+      </div>
+      <h1 id="eventTitle" class="hero-title">AMIGO INVISIBLE</h1>
+      <p id="heroSubtitle" class="hero-subtitle">Conjuntos Oficiales · UAP</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Cargando -->
+    <section data-view="loading" class="state-card center">
+      <div class="spinner"></div>
+      <p class="muted">Abriendo el escenario…</p>
+    </section>
+
+    <!-- Error de conexión -->
+    <section data-view="error" hidden class="card center">
+      <div class="emoji-big">🎻</div>
+      <h2>Se cortó el ensayo</h2>
+      <p id="errorText" class="muted"></p>
+      <button class="btn" onclick="location.reload()">Reintentar</button>
+    </section>
+
+    <!-- Pantalla de espera pública cuando todavía no hay sorteo (SIN formulario ni acceso admin) -->
+    <section data-view="waiting" hidden class="card center waiting-card">
+      <div class="curtain-icon">🎭</div>
+      <h2>El telón todavía no se abrió</h2>
+      <p class="muted">
+        El sorteo aún se está preparando. Cuando esté listo, volvé a abrir este mismo link para buscar tu nombre y descubrir a quién le regalás.
+      </p>
+      <button class="btn ghost" onclick="location.reload()">↻ Volver a fijarme</button>
+    </section>
+
+    <!-- Vista pública de participantes -->
+    <section data-view="participants" hidden>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input id="search" type="search" placeholder="Buscá tu nombre en la lista…" autocomplete="off" aria-label="Buscar tu nombre" />
+          <button id="clearSearch" type="button" class="clear-search" hidden aria-label="Limpiar búsqueda">✕</button>
+        </div>
+        <div class="toolbar-meta">
+          <span id="progress" class="pill-stat"></span>
+          <span class="hint-inline">Tocá tu nombre · Creá o ingresá tu PIN de 4 números</span>
+        </div>
+      </div>
+
+      <ul id="nameList" class="names"></ul>
+      <div id="noResults" class="card center" hidden>
+        <p class="muted">No encontramos a nadie con ese nombre.</p>
+      </div>
+    </section>
+
+    <!-- Área exclusiva del organizador (solo accesible por /#organizador) -->
+    <section data-view="admin" hidden>
+      <!-- Paso 1: pedir clave maestra -->
+      <div id="adminLogin" class="card narrow">
+        <div class="card-head">
+          <span class="eyebrow">Acceso restringido</span>
+          <h2>Área del Organizador</h2>
+          <p class="muted">Ingresá la clave maestra configurada en el servidor para crear o administrar el sorteo.</p>
+        </div>
+        <form id="adminLoginForm" autocomplete="off">
+          <label class="field">
+            <span>Clave maestra</span>
+            <input id="adminPw" type="password" required placeholder="••••••••" autocomplete="current-password" />
+          </label>
+          <p id="adminLoginError" class="error" hidden></p>
+          <button id="adminLoginBtn" class="btn big" type="submit">Entrar al backstage</button>
+        </form>
+        <a href="#" class="back">← Volver a la vista pública</a>
+      </div>
+
+      <!-- Paso 2A: Crear sorteo (solo visible tras validar clave maestra si no hay sorteo activo) -->
+      <div id="setupPanel" class="card" hidden>
+        <div class="card-head">
+          <span class="eyebrow">Nuevo sorteo</span>
+          <h2>Armar la lista del grupo</h2>
+          <p class="muted">Vos también podés participar: el sorteo se cifra automáticamente y nunca se muestra quién le tocó a quién.</p>
+        </div>
+
+        <form id="setupForm" autocomplete="off">
+          <label class="field">
+            <span>Título del evento <small>(opcional)</small></span>
+            <input id="setupTitle" type="text" maxlength="80" placeholder="Ej: Amigo Invisible · Coro y Conjuntos UAP" />
+          </label>
+
+          <label class="field">
+            <span>Participantes <small>— uno por renglón, incluyéndote a vos</small></span>
+            <textarea id="setupNames" rows="10" placeholder="Juan Pérez&#10;María López&#10;Lucas Gómez&#10;…"></textarea>
+          </label>
+          <p id="namesInfo" class="hint"></p>
+
+          <details class="field accordion">
+            <summary>Exclusiones <small>(opcional — parejas o familiares que no se pueden tocar entre sí)</small></summary>
+            <div class="accordion-body">
+              <p class="hint">Escribí un grupo por renglón, separando los nombres con coma. Nadie dentro del mismo renglón le va a regalar a otro de ese renglón.</p>
+              <textarea id="setupExclusions" rows="4" placeholder="Juan Pérez, María López&#10;Lucas Gómez, Sofía Gómez, Ana Gómez"></textarea>
+              <p id="exclusionsInfo" class="hint"></p>
+            </div>
+          </details>
+
+          <p id="setupError" class="error" hidden></p>
+          <button id="setupBtn" class="btn big gold" type="submit">🎲 Abrir el telón y sortear</button>
+        </form>
+      </div>
+
+      <!-- Paso 2B: Sorteo recién creado -->
+      <div id="createdPanel" class="card center narrow" hidden>
+        <div class="emoji-big">🎉</div>
+        <span class="eyebrow">¡Todo listo!</span>
+        <h2>El sorteo ya está en escena</h2>
+        <p class="muted">Compartí este único link en el grupo de WhatsApp. Cada persona entra, busca su nombre y crea su PIN de 4 números.</p>
+        <div class="linkbox"><code id="shareLink"></code></div>
+        <div class="row center-row">
+          <button id="copyLinkBtn" type="button" class="btn gold">📋 Copiar link del grupo</button>
+          <a id="waShareBtn" class="btn whatsapp" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        </div>
+        <p class="muted small">Vos también podés ir a la lista, buscar tu nombre y descubrir quién te tocó.</p>
+        <div class="row center-row">
+          <button id="goToListBtn" type="button" class="btn ghost">👥 Ir a la lista pública</button>
+          <button id="goToAdminDashBtn" type="button" class="btn ghost">📊 Ver panel de seguimiento</button>
+        </div>
+      </div>
+
+      <!-- Paso 2C: Panel de seguimiento (cuando ya existe un sorteo) -->
+      <div id="adminPanel" class="admin-grid" hidden>
+        <div class="admin-col-side">
+          <div class="card">
+            <span class="eyebrow">Seguimiento en vivo</span>
+            <h2>Estado del grupo</h2>
+
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-bg" cx="60" cy="60" r="50" />
+                <circle id="adminRingCircle" class="ring-fg" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16" />
+              </svg>
+              <div class="ring-label">
+                <strong id="adminRingNumbers">0/0</strong>
+                <span>ya entraron</span>
+              </div>
+            </div>
+
+            <p id="adminProgressText" class="muted center small"></p>
+
+            <div class="stack-btns">
+              <button id="copyPendingBtn" type="button" class="btn gold">📋 Copiar pendientes para WhatsApp</button>
+              <button id="copyGroupLinkAdmin" type="button" class="btn ghost">🔗 Copiar link del grupo</button>
+              <button id="adminRefresh" type="button" class="btn ghost">↻ Actualizar estado</button>
+            </div>
+          </div>
+
+          <div class="card danger-zone">
+            <h3>Rehacer sorteo</h3>
+            <p class="muted small">Borra el sorteo actual y todos los PINs para cargar una lista nueva y volver a sortear.</p>
+            <button id="resetAllBtn" type="button" class="btn danger">🗑️ Borrar sorteo actual</button>
+          </div>
+        </div>
+
+        <div class="admin-col-main">
+          <div class="card">
+            <div class="row spread">
+              <input id="adminSearch" type="search" placeholder="🔍 Buscar participante…" aria-label="Buscar participante" />
+              <label class="check"><input type="checkbox" id="onlyPending" /> Solo pendientes</label>
+            </div>
+            <ul id="adminList" class="admin-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal de PIN y Revelación (Bottom Sheet en celular / Modal en compu) -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalName">
+      <button class="close" id="modalClose" type="button" aria-label="Cerrar">✕</button>
+
+      <!-- Paso 1: Crear o ingresar PIN -->
+      <form id="pinStep" autocomplete="off">
+        <span id="modalEyebrow" class="eyebrow">Butaca reservada</span>
+        <h2 id="modalName"></h2>
+
+        <div id="newPinWarning" class="warning" hidden>
+          ⚠️ Vas a entrar como <strong id="warnName"></strong> por primera vez. Si no sos vos, cerrá esta ventana para no bloquearle el lugar a tu compañero.
+        </div>
+
+        <div class="pin-block">
+          <span id="pinLabel" class="pin-title">Tu PIN de 4 números</span>
+          <div id="pinBoxes1" class="pin-boxes" data-target="pin">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Dígito 1" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Dígito 2" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Dígito 3" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Dígito 4" />
+          </div>
+          <input id="pin" type="hidden" />
+        </div>
+
+        <div id="pin2Field" class="pin-block" hidden>
+          <span class="pin-title">Repetí los 4 números para confirmar</span>
+          <div id="pinBoxes2" class="pin-boxes" data-target="pin2">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Confirmar dígito 1" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Confirmar dígito 2" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Confirmar dígito 3" />
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-digit" aria-label="Confirmar dígito 4" />
+          </div>
+          <input id="pin2" type="hidden" />
+        </div>
+
+        <p id="pinHelp" class="hint center"></p>
+        <p id="pinError" class="error" hidden></p>
+        <button id="pinBtn" class="btn big gold" type="submit">Continuar</button>
+      </form>
+
+      <!-- Paso 2: Regalo interactivo + Ticket dorado -->
+      <div id="revealStep" hidden>
+        <p class="center muted small" id="revealHello"></p>
+
+        <div id="giftStage" class="gift-stage" tabindex="0" role="button" aria-label="Tocá el regalo para descubrir a quién le regalás">
+          <!-- Caja de regalo antes de abrir -->
+          <div id="giftBoxWrap" class="gift-box-wrap">
+            <div class="gift-box">
+              <div class="gift-lid">
+                <div class="gift-bow"></div>
+              </div>
+              <div class="gift-body"></div>
+            </div>
+            <p class="gift-prompt">✨ Tocá el regalo para abrir tu sobre</p>
+            <small class="muted">(asegurate de que nadie esté espiando tu pantalla 👀)</small>
+          </div>
+
+          <!-- Ticket dorado revelado al abrir -->
+          <div id="ticketReveal" class="ticket" hidden>
+            <div class="ticket-inner">
+              <span class="ticket-tag">🎶 ENTRADA SECRETA · UAP</span>
+              <p class="ticket-sub">En este Amigo Invisible te toca regalarle a</p>
+              <p id="revealTarget" class="ticket-name"></p>
+              <div class="ticket-divider"></div>
+              <small class="ticket-foot">¡Guardá el secreto hasta el día del encuentro! 🤫</small>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint center" id="revealNote"></p>
+        <button class="btn ghost big" id="revealClose" type="button">Cerrar y ocultar nombre</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
