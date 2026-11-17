@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0A1B36" />
-  <title>Amigo Invisible · Ciclo de Conciertos UAP</title>
+  <title>Amigo Invisible · MUSICAP</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎶</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -36,15 +36,11 @@
     </div>
   </div>
 
-  <!-- Encabezado estilo Ciclo de Conciertos UAP -->
+  <!-- Encabezado MUSICAP -->
   <header class="hero">
     <div class="hero-inner">
-      <div class="stave-logo" aria-label="Ciclo de Conciertos">
-        <span class="stave-lines" aria-hidden="true"></span>
-        <span class="stave-script">ciclo de Conciertos</span>
-      </div>
       <h1 id="eventTitle" class="hero-title">AMIGO INVISIBLE</h1>
-      <p id="heroSubtitle" class="hero-subtitle">Conjuntos Oficiales · UAP</p>
+      <p id="heroSubtitle" class="hero-subtitle">MUSICAP</p>
     </div>
   </header>
 
@@ -113,34 +109,54 @@
         <a href="#" class="back">← Volver a la vista pública</a>
       </div>
 
-      <!-- Paso 2A: Crear sorteo (solo visible tras validar clave maestra si no hay sorteo activo) -->
+      <!-- Paso 2A: Crear sorteo de forma interactiva (persona por persona + excepciones por clic) -->
       <div id="setupPanel" class="card" hidden>
         <div class="card-head">
           <span class="eyebrow">Nuevo sorteo</span>
           <h2>Armar la lista del grupo</h2>
-          <p class="muted">Vos también podés participar: el sorteo se cifra automáticamente y nunca se muestra quién le tocó a quién.</p>
+          <p class="muted">Agregá a las personas de a una y después tocá <strong>🚫 Excepciones</strong> al lado de quien quieras para elegir con quién no puede tocarse. Vos también podés participar sin ver los resultados.</p>
         </div>
 
         <form id="setupForm" autocomplete="off">
           <label class="field">
             <span>Título del evento <small>(opcional)</small></span>
-            <input id="setupTitle" type="text" maxlength="80" placeholder="Ej: Amigo Invisible · Coro y Conjuntos UAP" />
+            <input id="setupTitle" type="text" maxlength="80" placeholder="Ej: Amigo Invisible MUSICAP" />
           </label>
 
-          <label class="field">
-            <span>Participantes <small>— uno por renglón, incluyéndote a vos</small></span>
-            <textarea id="setupNames" rows="10" placeholder="Juan Pérez&#10;María López&#10;Lucas Gómez&#10;…"></textarea>
-          </label>
-          <p id="namesInfo" class="hint"></p>
-
-          <details class="field accordion">
-            <summary>Exclusiones <small>(opcional — parejas o familiares que no se pueden tocar entre sí)</small></summary>
-            <div class="accordion-body">
-              <p class="hint">Escribí un grupo por renglón, separando los nombres con coma. Nadie dentro del mismo renglón le va a regalar a otro de ese renglón.</p>
-              <textarea id="setupExclusions" rows="4" placeholder="Juan Pérez, María López&#10;Lucas Gómez, Sofía Gómez, Ana Gómez"></textarea>
-              <p id="exclusionsInfo" class="hint"></p>
+          <!-- Paso 1: Alta de personas -->
+          <div class="builder-section">
+            <div class="builder-head">
+              <span class="builder-step">1. Participantes</span>
+              <div class="builder-meta">
+                <span id="namesInfo" class="pill-stat">0 participantes</span>
+                <button id="clearDraftBtn" type="button" class="btn ghost tiny" hidden>Vaciar lista</button>
+              </div>
             </div>
-          </details>
+
+            <div class="add-person-bar">
+              <input id="newPersonInput" type="text" maxlength="60" placeholder="Escribí nombre y apellido (ej. Juan Pérez)…" aria-label="Nombre del participante" />
+              <button id="addPersonBtn" type="button" class="btn gold">+ Agregar</button>
+            </div>
+            <p id="personAddError" class="error" hidden></p>
+
+            <div id="builderEmpty" class="builder-empty muted">
+              Todavía no agregaste a nadie. Escribí un nombre arriba y apretá <strong>Enter</strong> o <strong>+ Agregar</strong>.
+            </div>
+
+            <ul id="builderList" class="builder-list"></ul>
+          </div>
+
+          <!-- Paso 2: Resumen de Excepciones -->
+          <div class="builder-section">
+            <div class="builder-head">
+              <span class="builder-step">2. Excepciones configuradas <small>(parejas / familiares que no se regalan entre sí)</small></span>
+              <span id="exclusionsInfo" class="muted small"></span>
+            </div>
+            <p id="exclusionsEmpty" class="hint">
+              Ninguna excepción cargada. Para agregar una, tocá el botón <strong>🚫 Excepciones</strong> al lado de cualquier participante de la lista de arriba.
+            </p>
+            <div id="exclusionsChips" class="exc-chips"></div>
+          </div>
 
           <p id="setupError" class="error" hidden></p>
           <button id="setupBtn" class="btn big gold" type="submit">🎲 Abrir el telón y sortear</button>
@@ -212,6 +228,25 @@
     </section>
   </main>
 
+  <!-- Modal selector de Excepciones para una persona -->
+  <div id="excModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="excModalTitle">
+      <button class="close" id="excModalClose" type="button" aria-label="Cerrar">✕</button>
+      <span class="eyebrow">Configurar restricciones</span>
+      <h2 id="excModalTitle">Excepciones</h2>
+      <p class="muted small" id="excModalSub"></p>
+
+      <div class="search-wrap exc-search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input id="excSearch" type="search" placeholder="Buscar en la lista…" autocomplete="off" />
+      </div>
+
+      <ul id="excChecklist" class="exc-checklist"></ul>
+
+      <button id="excModalDone" type="button" class="btn big gold">Listo</button>
+    </div>
+  </div>
+
   <!-- Modal de PIN y Revelación (Bottom Sheet en celular / Modal en compu) -->
   <div id="modal" class="modal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalName">
@@ -273,7 +308,7 @@
           <!-- Ticket dorado revelado al abrir -->
           <div id="ticketReveal" class="ticket" hidden>
             <div class="ticket-inner">
-              <span class="ticket-tag">🎶 ENTRADA SECRETA · UAP</span>
+              <span class="ticket-tag">🎶 ENTRADA SECRETA · MUSICAP</span>
               <p class="ticket-sub">En este Amigo Invisible te toca regalarle a</p>
               <p id="revealTarget" class="ticket-name"></p>
               <div class="ticket-divider"></div>

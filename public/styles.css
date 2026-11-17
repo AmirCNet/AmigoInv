@@ -212,7 +212,7 @@ body.no-photo .stage-photo {
 /* --------------------- Hero / Encabezado Concierto --------------------- */
 
 .hero {
-  padding: 28px 16px 14px;
+  padding: 32px 16px 16px;
   text-align: center;
 }
 
@@ -221,43 +221,13 @@ body.no-photo .stage-photo {
   margin: 0 auto;
 }
 
-/* Pentagrama con cursiva estilo flyer UAP */
-.stave-logo {
-  position: relative;
-  display: inline-block;
-  padding: 4px 28px;
-  margin-bottom: 6px;
-}
-
-.stave-lines {
-  position: absolute;
-  inset: 22% 0 22% 0;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgba(245, 247, 251, 0.36) 0px,
-    rgba(245, 247, 251, 0.36) 1px,
-    transparent 1px,
-    transparent 6px
-  );
-  pointer-events: none;
-}
-
-.stave-script {
-  position: relative;
-  font-family: 'Great Vibes', cursive;
-  font-size: clamp(1.85rem, 4.5vw, 2.55rem);
-  color: var(--gold-200);
-  text-shadow: 0 2px 14px rgba(6, 16, 34, 0.95), 0 0 22px rgba(232, 163, 61, 0.45);
-  padding: 0 8px;
-}
-
 .hero-title {
   font-family: 'Montserrat', sans-serif;
   font-weight: 900;
-  font-size: clamp(1.7rem, 5vw, 2.85rem);
+  font-size: clamp(1.85rem, 5.2vw, 3rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin: 2px 0 6px;
+  margin: 0 0 6px;
   background: linear-gradient(120deg, #ffffff 15%, var(--gold-200) 50%, #ffffff 85%);
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -272,11 +242,12 @@ body.no-photo .stage-photo {
 
 .hero-subtitle {
   margin: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+  font-weight: 800;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: var(--blue-300);
+  color: var(--gold-400);
 }
 
 /* --------------------- Contenedor Principal --------------------- */
@@ -1043,6 +1014,244 @@ textarea {
 .ticket-foot {
   color: var(--blue-300);
   font-size: 0.84rem;
+}
+
+/* --------------------- Armador Interactivo de Participantes y Excepciones --------------------- */
+
+.builder-section {
+  background: rgba(6, 16, 34, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.builder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.builder-step {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--gold-200);
+}
+
+.builder-step small {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.builder-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-person-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.add-person-bar input {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .add-person-bar {
+    flex-direction: column;
+  }
+  .add-person-bar .btn {
+    width: 100%;
+  }
+}
+
+.builder-empty {
+  text-align: center;
+  padding: 18px 12px;
+  border: 1px dashed rgba(169, 184, 212, 0.24);
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.builder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.builder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(16, 40, 78, 0.65);
+  border: 1px solid rgba(169, 184, 212, 0.18);
+}
+
+.builder-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.builder-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(232, 163, 61, 0.18);
+  color: var(--gold-200);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.builder-name {
+  font-weight: 600;
+  font-size: 0.96rem;
+}
+
+.builder-exc-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mini-exc {
+  font-size: 0.74rem;
+  background: rgba(201, 59, 66, 0.22);
+  border: 1px solid rgba(255, 130, 135, 0.38);
+  color: #ffc8cb;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.builder-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-remove {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid rgba(229, 83, 90, 0.35);
+  background: rgba(158, 36, 43, 0.18);
+  color: #ffb8bc;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove:hover {
+  background: rgba(158, 36, 43, 0.4);
+}
+
+.exc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.exc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 40, 78, 0.85);
+  border: 1px solid rgba(246, 211, 139, 0.35);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 999px;
+}
+
+.exc-chip button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exc-chip button:hover {
+  background: var(--wine-500);
+}
+
+.exc-search-wrap {
+  margin: 10px 0;
+}
+
+.exc-checklist {
+  list-style: none;
+  margin: 8px 0 14px;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(6, 16, 34, 0.65);
+  border: 1px solid rgba(169, 184, 212, 0.2);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.exc-item:hover {
+  border-color: rgba(246, 211, 139, 0.45);
+}
+
+.exc-item.active {
+  background: rgba(201, 59, 66, 0.2);
+  border-color: rgba(255, 130, 135, 0.55);
+}
+
+.exc-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold-400);
+  cursor: pointer;
 }
 
 /* --------------------- Panel del Organizador (2 columnas en PC) --------------------- */

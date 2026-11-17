@@ -206,7 +206,7 @@ async function loadState() {
   state = await api.get();
   const title = (state.exists && state.title) || 'AMIGO INVISIBLE';
   $('eventTitle').textContent = title.toUpperCase();
-  document.title = `${title} · Ciclo de Conciertos UAP`;
+  document.title = `${title} · MUSICAP`;
 }
 
 async function route() {
@@ -228,60 +228,259 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 
-/* ----------------------------- Crear sorteo ----------------------------- */
+/* --------------- Crear sorteo (Interactivo sin errores) ---------------- */
 
-function parseNames(text) {
-  const names = text.split(/\r?\n/).map(cleanName).filter(Boolean);
-  const seen = new Map();
-  const dups = new Set();
-  for (const n of names) {
-    const k = nameKey(n);
-    if (seen.has(k)) dups.add(n);
-    else seen.set(k, n);
+const DRAFT_KEY = 'ai-draft-v3';
+let builder = loadDraft();
+let excTargetPerson = null;
+
+function loadDraft() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+    const names = Array.isArray(raw.names) ? raw.names.map(cleanName).filter(Boolean) : [];
+    const set = new Set(names);
+    const pairs = Array.isArray(raw.pairs)
+      ? raw.pairs.filter((p) => Array.isArray(p) && p.length === 2 && set.has(p[0]) && set.has(p[1]) && p[0] !== p[1])
+      : [];
+    return { names, pairs };
+  } catch {
+    return { names: [], pairs: [] };
   }
-  return { names, dups: [...dups], keys: seen };
 }
 
-function parseExclusions(text) {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.split(/[,;]/).map(cleanName).filter(Boolean))
-    .filter((g) => g.length >= 2);
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(builder));
+  } catch {}
 }
+
+function hasPair(a, b) {
+  return builder.pairs.some((p) => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));
+}
+
+function togglePair(a, b, enabled) {
+  if (a === b) return;
+  builder.pairs = builder.pairs.filter((p) => !((p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)));
+  if (enabled) builder.pairs.push([a, b]);
+  saveDraft();
+  renderBuilder();
+}
+
+function exclusionsFor(person) {
+  const out = [];
+  for (const [a, b] of builder.pairs) {
+    if (a === person) out.push(b);
+    else if (b === person) out.push(a);
+  }
+  return out;
+}
+
+function addPersonFromInput() {
+  const input = $('newPersonInput');
+  const err = $('personAddError');
+  showError(err, '');
+  showError($('setupError'), '');
+
+  const raw = cleanName(input.value);
+  if (!raw) {
+    input.focus();
+    return;
+  }
+
+  const key = nameKey(raw);
+  const existing = builder.names.find((n) => nameKey(n) === key);
+  if (existing) {
+    showError(err, `⚠️ "${existing}" ya está en la lista. Agregale inicial, apellido o apodo para diferenciarlos.`);
+    input.select();
+    return;
+  }
+
+  builder.names.push(raw);
+  saveDraft();
+  input.value = '';
+  renderBuilder();
+  input.focus();
+}
+
+function removePerson(name) {
+  builder.names = builder.names.filter((n) => n !== name);
+  builder.pairs = builder.pairs.filter(([a, b]) => a !== name && b !== name);
+  saveDraft();
+  renderBuilder();
+}
+
+function renderBuilder() {
+  const count = builder.names.length;
+  $('namesInfo').textContent = `${count} participante${count === 1 ? '' : 's'}`;
+  $('clearDraftBtn').hidden = count === 0;
+  $('builderEmpty').hidden = count > 0;
+
+  const list = $('builderList');
+  list.replaceChildren(
+    ...builder.names.map((name, idx) => {
+      const li = document.createElement('li');
+      li.className = 'builder-row';
+
+      const main = document.createElement('div');
+      main.className = 'builder-row-main';
+
+      const num = document.createElement('span');
+      num.className = 'builder-num';
+      num.textContent = String(idx + 1);
+
+      const label = document.createElement('span');
+      label.className = 'builder-name';
+      label.textContent = name;
+
+      main.append(num, label);
+
+      const excs = exclusionsFor(name);
+      if (excs.length) {
+        const badges = document.createElement('div');
+        badges.className = 'builder-exc-badges';
+        for (const other of excs) {
+          const pill = document.createElement('span');
+          pill.className = 'mini-exc';
+          pill.textContent = `🚫 ${other}`;
+          badges.appendChild(pill);
+        }
+        main.appendChild(badges);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'builder-row-actions';
+
+      const excBtn = document.createElement('button');
+      excBtn.type = 'button';
+      excBtn.className = 'btn ghost tiny';
+      excBtn.textContent = excs.length ? `🚫 Excepciones (${excs.length})` : '🚫 Excepciones';
+      excBtn.addEventListener('click', () => openExcModal(name));
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-remove';
+      delBtn.title = `Quitar a ${name}`;
+      delBtn.setAttribute('aria-label', `Quitar a ${name}`);
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => removePerson(name));
+
+      actions.append(excBtn, delBtn);
+      li.append(main, actions);
+      return li;
+    })
+  );
+
+  // Resumen de excepciones abajo
+  const pCount = builder.pairs.length;
+  $('exclusionsEmpty').hidden = pCount > 0;
+  $('exclusionsInfo').textContent = pCount
+    ? `${pCount} restricci${pCount === 1 ? 'ón activa' : 'ones activas'}`
+    : '';
+
+  const chips = $('exclusionsChips');
+  chips.replaceChildren(
+    ...builder.pairs.map(([a, b]) => {
+      const chip = document.createElement('span');
+      chip.className = 'exc-chip';
+      const txt = document.createElement('span');
+      txt.textContent = `${a} ↔ ${b}`;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.title = 'Quitar esta excepción';
+      rm.textContent = '✕';
+      rm.addEventListener('click', () => togglePair(a, b, false));
+      chip.append(txt, rm);
+      return chip;
+    })
+  );
+}
+
+$('addPersonBtn').addEventListener('click', addPersonFromInput);
+$('newPersonInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addPersonFromInput();
+  }
+});
+$('newPersonInput').addEventListener('input', () => showError($('personAddError'), ''));
+
+$('clearDraftBtn').addEventListener('click', () => {
+  if (!confirm('¿Vaciar toda la lista de participantes y excepciones cargadas?')) return;
+  builder = { names: [], pairs: [] };
+  saveDraft();
+  renderBuilder();
+});
+
+/* ---------------- Modal Selector Visual de Excepciones ----------------- */
+
+function openExcModal(person) {
+  if (builder.names.length < 2) {
+    return toast('Agregá al menos 2 participantes para configurar excepciones');
+  }
+  excTargetPerson = person;
+  $('excModalTitle').textContent = `Excepciones de ${person}`;
+  $('excModalSub').textContent = `Tildá con quiénes ${person} NO puede regalarse (ni darle ni recibir):`;
+  $('excSearch').value = '';
+  renderExcChecklist();
+  $('excModal').hidden = false;
+}
+
+function closeExcModal() {
+  $('excModal').hidden = true;
+  excTargetPerson = null;
+}
+
+function renderExcChecklist() {
+  if (!excTargetPerson) return;
+  const q = nameKey($('excSearch').value);
+  const others = builder.names.filter((n) => n !== excTargetPerson && (!q || nameKey(n).includes(q)));
+
+  $('excChecklist').replaceChildren(
+    ...others.map((other) => {
+      const active = hasPair(excTargetPerson, other);
+      const li = document.createElement('li');
+      const label = document.createElement('label');
+      label.className = `exc-item${active ? ' active' : ''}`;
+
+      const span = document.createElement('span');
+      span.textContent = other;
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = active;
+      cb.addEventListener('change', () => {
+        togglePair(excTargetPerson, other, cb.checked);
+        label.classList.toggle('active', cb.checked);
+      });
+
+      label.append(span, cb);
+      li.appendChild(label);
+      return li;
+    })
+  );
+}
+
+$('excSearch').addEventListener('input', renderExcChecklist);
+$('excModalClose').addEventListener('click', closeExcModal);
+$('excModalDone').addEventListener('click', closeExcModal);
+$('excModal').addEventListener('click', (e) => {
+  if (e.target === $('excModal')) closeExcModal();
+});
 
 function validateSetup() {
-  const { names, dups, keys } = parseNames($('setupNames').value);
-  const info = $('namesInfo');
-  if (!names.length) info.textContent = 'Pegá o escribí los nombres, uno por renglón.';
-  else if (dups.length) {
-    info.textContent = `⚠️ ${names.length} nombres — repetidos: ${dups.join(', ')}. Agregales apellido o apodo.`;
-  } else {
-    info.textContent = `✅ ${names.length} participante${names.length === 1 ? '' : 's'} listos para el sorteo`;
-  }
-
-  const groups = parseExclusions($('setupExclusions').value);
-  const unknown = [...new Set(groups.flat().filter((n) => !keys.has(nameKey(n))))];
-  $('exclusionsInfo').textContent = unknown.length
-    ? `⚠️ No están en la lista principal: ${unknown.join(', ')}`
-    : groups.length
-      ? `✅ ${groups.length} grupo${groups.length === 1 ? '' : 's'} de exclusión configurados`
-      : '';
-
-  return { names, dups, groups, unknown };
+  renderBuilder();
+  return { names: builder.names, groups: builder.pairs };
 }
-
-$('setupNames').addEventListener('input', validateSetup);
-$('setupExclusions').addEventListener('input', validateSetup);
 
 $('setupForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('setupError');
-  const { names, dups, groups, unknown } = validateSetup();
+  const { names, groups } = validateSetup();
   const pw = sessionStorage.getItem('ai-admin') || '';
 
-  if (names.length < 3) return showError(err, 'Se necesitan al menos 3 participantes.');
-  if (dups.length) return showError(err, `Hay nombres repetidos: ${dups.join(', ')}.`);
-  if (unknown.length) return showError(err, `Corregí las exclusiones: ${unknown.join(', ')} no está en la lista.`);
+  if (names.length < 3) {
+    return showError(err, `Agregá al menos 3 participantes (ahora hay ${names.length}).`);
+  }
   if (!confirm(`¿Confirmás sortear entre ${names.length} participantes?`)) return;
 
   showError(err, '');
@@ -294,6 +493,8 @@ $('setupForm').addEventListener('submit', async (e) => {
       exclusions: groups,
       adminPassword: pw,
     });
+    builder = { names: [], pairs: [] };
+    localStorage.removeItem(DRAFT_KEY);
     await loadState();
     const url = shareUrl();
     $('shareLink').textContent = url;
@@ -537,7 +738,8 @@ $('modal').addEventListener('click', (e) => {
   if (e.target === $('modal')) closeModal();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !$('modal').hidden) closeModal();
+  if (e.key === 'Escape' && !$('excModal').hidden) closeExcModal();
+  else if (e.key === 'Escape' && !$('modal').hidden) closeModal();
 });
 
 /* ------------------------- Área del Organizador ------------------------- */
